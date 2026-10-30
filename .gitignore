@@ -6,4 +6,8 @@ frontend/.env
 frontend/dist/
 *.log
 *.pyc
+# Python virtual environments
 .venv/
+venv/
+**/.venv/
+**/venv/
