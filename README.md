@@ -16,7 +16,7 @@ The dashboard displays:
 - Errors and warnings.
 - Last reconciliation status.
 
-![Data Quality Dashboard]()
+![Data Quality Dashboard](https://github.com/user-attachments/assets/20d2eb60-66e0-4c0d-a085-f31a83d0c4f3)
 
 *Figure 16.1 — Data Quality dashboard and KPI overview.*
 
@@ -51,7 +51,7 @@ Supported statuses:
 
 The issue list supports search, filtering by status, severity, module, issue type and date range, and pagination.
 
-![Data Quality Issues]()
+![Data Quality Issues](https://github.com/user-attachments/assets/4e178f8e-b101-47af-a67a-4ffe2f6e8387)
 
 *Figure 16.2 — Data quality issues with severity and status.*
 
@@ -61,11 +61,11 @@ The issue details view provides validation information, status updates, resoluti
 
 For inventory mismatches, it displays current stock, reserved stock, stored available stock, expected available stock, and the difference.
 
-![Issue Details]()
+![Issue Details](https://github.com/user-attachments/assets/92261cda-e721-47b4-93d3-defe0cd17bdc)
 
 *Figure 16.3 — Inventory mismatch investigation.*
 
-![Issue History]()
+![Issue History](https://github.com/user-attachments/assets/4e23f367-7183-4d8f-86fa-39a3ec7b3a9e)
 
 *Figure 16.4 — Issue status transitions and resolution history.*
 
@@ -86,7 +86,7 @@ Each run tracks:
 - Issues detected and resolved.
 - Failed checks.
 
-![Reconciliation History]()
+![Reconciliation History](https://github.com/user-attachments/assets/4bf2697d-6e62-4f4d-a697-0c6efabb8616)
 
 *Figure 16.5 — Reconciliation execution history.*
 
@@ -96,7 +96,7 @@ Issue status updates are recorded in the existing central Audit Logs module usin
 
 Audit entries capture the user, action, resource, timestamp, status, and previous/new values.
 
-![Audit Logs]()
+![Audit Logs](https://github.com/user-attachments/assets/f17bf78e-3ea5-4afb-b4e7-4a25b76f7fcf)
 
 *Figure 16.6 — Data Quality activity recorded in Audit Logs.*
 
