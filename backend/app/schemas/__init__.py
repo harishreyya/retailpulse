@@ -66,9 +66,18 @@ __all__ = [
     "SeasonalPatternPoint", "ForecastAnalyticsSummary", "RecommendationRow",
 ]
 
-from app.schemas.imports import (
-    ImportPreviewRow, ImportRowIssue, ImportValidationSummary, ImportUploadResponse,
-    ImportJobOut, ImportJobListResponse, ImportJobDetailOut, ImportResultOut, ImportErrorOut,
+from .imports import (
+    ImportUploadResponse,
+    ImportPreviewRow,
+    ImportRowIssue,
+    ImportValidationSummary,
+    ImportJobOut,
+    ImportJobListResponse,
+    ImportJobDetailOut,
+    ImportResultOut,
+    ImportProgressOut,
+    ImportCancelResponse,
+    ImportErrorOut,
 )
 
 __all__ += [

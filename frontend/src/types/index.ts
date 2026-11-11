@@ -810,17 +810,30 @@ export interface InventoryForecastListParams {
 }
 
 
-// ---------- Data Import (Task 12) ----------
 
-export type ImportType = "PRODUCTS" | "CUSTOMERS" | "SALES";
+// ---------- Data Import (Task 17) ----------
+
+export type ImportType =
+  | "PRODUCTS"
+  | "INVENTORY"
+  | "CUSTOMERS"
+  | "SALES";
+
 export type ImportStatus =
   | "PENDING"
+  | "UPLOADED"
+  | "VALIDATING"
   | "VALIDATED"
   | "PROCESSING"
   | "COMPLETED"
   | "COMPLETED_WITH_ERRORS"
+  | "FAILED"
+  | "CANCELLED";
+
+export type ImportRowStatus =
+  | "INVALID"
+  | "DUPLICATE"
   | "FAILED";
-export type ImportRowStatus = "INVALID" | "DUPLICATE" | "FAILED";
 
 export interface ImportPreviewRow {
   row_number: number;
@@ -862,9 +875,21 @@ export interface ImportJob {
   successful_records: number;
   failed_records: number;
   duplicate_records: number;
+  skipped_records: number;
+  processed_records: number;
+  progress_percentage: number;
+  processing_stage?: string | null;
   status: ImportStatus;
   created_at: string;
+  started_at?: string | null;
   completed_at?: string | null;
+  duration_seconds?: number | null;
+  cancellation_requested: boolean;
+}
+
+export interface ImportJobDetail extends ImportJob {
+  valid_records: number;
+  invalid_records: number;
 }
 
 export interface ImportJobListResponse {
@@ -879,7 +904,35 @@ export interface ImportResult {
   successful_records: number;
   failed_records: number;
   duplicate_records: number;
+  skipped_records?: number;
+  processed_records?: number;
+  progress_percentage?: number;
+  processing_stage?: string | null;
   completed_at?: string | null;
+}
+
+export interface ImportProgress {
+  id: string;
+  status: ImportStatus;
+  total_records: number;
+  processed_records: number;
+  successful_records: number;
+  failed_records: number;
+  duplicate_records: number;
+  skipped_records: number;
+  progress_percentage: number;
+  processing_stage?: string | null;
+  cancellation_requested: boolean;
+  started_at?: string | null;
+  completed_at?: string | null;
+  duration_seconds?: number | null;
+}
+
+export interface ImportCancelResponse {
+  id: string;
+  status: ImportStatus;
+  cancellation_requested: boolean;
+  message: string;
 }
 
 // ---------- Audit Logs (Task 13) ----------

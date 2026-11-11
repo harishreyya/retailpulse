@@ -1,0 +1,2 @@
+Customer,Product,Quantity,Unit Price,Sale Date,Invoice Number,Sales Channel,Payment Method
+task17.customer@example.com,TP-TEST-001,1,499,2026-11-06,INV-TASK17-002,Online,UPI

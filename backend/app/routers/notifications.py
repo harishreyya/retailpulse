@@ -25,7 +25,12 @@ CATEGORY_TYPES: dict[str, list[NotificationType]] = {
         NotificationType.CUSTOMER_REGISTERED, NotificationType.CUSTOMER_VIP,
         NotificationType.CUSTOMER_INACTIVE, NotificationType.CUSTOMER_FIRST_PURCHASE,
     ],
-    "import": [NotificationType.IMPORT_COMPLETED, NotificationType.IMPORT_FAILED, NotificationType.DATA_IMPORT_COMPLETED],
+    "import": [
+    NotificationType.IMPORT_STARTED,
+    NotificationType.IMPORT_COMPLETED,
+    NotificationType.IMPORT_FAILED,
+    NotificationType.DATA_IMPORT_COMPLETED,
+],
     "system": [NotificationType.SYSTEM_ALERT],
 }
 

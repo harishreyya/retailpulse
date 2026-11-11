@@ -16,6 +16,43 @@ from app.models.data_quality import (
 # exist — for those, run the guarded ALTER TABLE statements below.
 Base.metadata.create_all(bind=engine)
 
+# Task 17: Advanced Data Import & Bulk Processing.
+# Extend existing import jobs without deleting existing records.
+
+with engine.connect() as conn:
+    # Add the new cancellation status to the existing PostgreSQL enum.
+    conn.execute(text(
+        "ALTER TYPE importstatus ADD VALUE IF NOT EXISTS 'CANCELLED'"
+    ))
+    conn.commit()
+
+    # Persisted processing progress and lifecycle fields.
+    conn.execute(text(
+        "ALTER TABLE import_jobs "
+        "ADD COLUMN IF NOT EXISTS processed_records INTEGER NOT NULL DEFAULT 0"
+    ))
+    conn.execute(text(
+        "ALTER TABLE import_jobs "
+        "ADD COLUMN IF NOT EXISTS skipped_records INTEGER NOT NULL DEFAULT 0"
+    ))
+    conn.execute(text(
+        "ALTER TABLE import_jobs "
+        "ADD COLUMN IF NOT EXISTS progress_percentage INTEGER NOT NULL DEFAULT 0"
+    ))
+    conn.execute(text(
+        "ALTER TABLE import_jobs "
+        "ADD COLUMN IF NOT EXISTS processing_stage VARCHAR(50)"
+    ))
+    conn.execute(text(
+        "ALTER TABLE import_jobs "
+        "ADD COLUMN IF NOT EXISTS cancellation_requested BOOLEAN NOT NULL DEFAULT FALSE"
+    ))
+    conn.execute(text(
+        "ALTER TABLE import_jobs ADD COLUMN IF NOT EXISTS started_at TIMESTAMP"
+    ))
+
+    conn.commit()
+
 # Task 2: entity_name on the already-existing audit_logs table.
 # Task 3: low_stock_threshold / is_out_of_stock on the already-existing
 # products table. create_all() can't add columns to a table it didn't
@@ -198,7 +235,15 @@ with engine.connect() as conn:
     conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(150) NOT NULL DEFAULT 'Notification'"))
     conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(150)"))
     conn.execute(text("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMP"))
-    for new_value in ["STOCKOUT_RISK", "OVERSTOCK", "SALES_ALERT", "IMPORT_COMPLETED", "IMPORT_FAILED", "SYSTEM_ALERT"]:
+    for new_value in [
+    "STOCKOUT_RISK",
+    "OVERSTOCK",
+    "SALES_ALERT",
+    "IMPORT_STARTED",
+    "IMPORT_COMPLETED",
+    "IMPORT_FAILED",
+    "SYSTEM_ALERT",
+     ]:
         try:
             conn.execute(text(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{new_value}'"))
         except Exception:

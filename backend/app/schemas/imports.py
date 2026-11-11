@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from typing import Optional
 
@@ -28,9 +29,6 @@ class ImportValidationSummary(BaseModel):
 
 
 # ---------- Upload / (re)validate response ----------
-# Both POST /import/upload and POST /import/{id}/validate return this shape:
-# upload does the first parse + validate, /validate re-runs validation
-# against current DB state (e.g. if new SKUs were added since upload).
 
 class ImportUploadResponse(BaseModel):
     import_id: str
@@ -51,13 +49,22 @@ class ImportJobOut(BaseModel):
     import_type: ImportType
     filename: str
     uploaded_by_name: Optional[str] = None
+
     total_records: int
     successful_records: int
     failed_records: int
     duplicate_records: int
+    skipped_records: int = 0
+    processed_records: int = 0
+    progress_percentage: int = 0
+    processing_stage: Optional[str] = None
+
     status: ImportStatus
     created_at: datetime
+    started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    duration_seconds: Optional[float] = None
+    cancellation_requested: bool = False
 
 
 class ImportJobListResponse(BaseModel):
@@ -79,8 +86,45 @@ class ImportResultOut(BaseModel):
     successful_records: int
     failed_records: int
     duplicate_records: int
+    skipped_records: int = 0
+    processed_records: int = 0
+    progress_percentage: int = 0
+    processing_stage: Optional[str] = None
     completed_at: Optional[datetime] = None
 
+
+# ---------- Progress response ----------
+
+class ImportProgressOut(BaseModel):
+    id: str
+    status: ImportStatus
+
+    total_records: int
+    processed_records: int
+    successful_records: int
+    failed_records: int
+    duplicate_records: int
+    skipped_records: int
+
+    progress_percentage: int
+    processing_stage: Optional[str] = None
+    cancellation_requested: bool = False
+
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    duration_seconds: Optional[float] = None
+
+
+# ---------- Cancellation response ----------
+
+class ImportCancelResponse(BaseModel):
+    id: str
+    status: ImportStatus
+    cancellation_requested: bool
+    message: str
+
+
+# ---------- Error report ----------
 
 class ImportErrorOut(BaseModel):
     row_number: int

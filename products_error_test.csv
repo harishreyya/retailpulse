@@ -1,0 +1,3 @@
+Product Name,SKU,Category,Unit Price,Stock Quantity,Brand,Description,Cost Price,Unit of Measure
+Task17 Valid Error Test,TP-ERROR-VALID-001,DQ Test Category,299,5,RetailPulse,Valid test row,150,piece
+Task17 Invalid Error Test,TP-ERROR-INVALID-001,DQ Test Category,-100,5,RetailPulse,Invalid negative price,-50,piece

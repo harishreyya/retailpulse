@@ -178,8 +178,7 @@ def recalculate_purchase_summary(db: Session, customer_id: str) -> CustomerPurch
             f"Segment changed from {previous_segment.value} to {new_segment.value}.",
         )
 
-    db.commit()
-    db.refresh(summary)
+    db.flush()
     return summary
 
 

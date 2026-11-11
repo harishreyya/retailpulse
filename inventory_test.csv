@@ -1,0 +1,2 @@
+SKU,Stock Quantity,Reason,Reorder Level,Remarks
+DQ-TEST-001,25,Manual stock correction,10,Task 17 inventory import test

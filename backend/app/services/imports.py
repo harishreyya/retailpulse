@@ -39,7 +39,8 @@ from app.models import (
     Customer, CustomerPurchaseSummary, CustomerType, CustomerStatus, CustomerActivityType,
     Sale, SaleItem, SalesChannel, PaymentMethod, PaymentStatus,
 )
-from app.models.inventory import Inventory
+from app.models.inventory import Inventory, InventoryMovement, MovementType
+from app.services.notifications import evaluate_product_stock_alert
 from app.schemas.inventory_utils import DEFAULT_REORDER_LEVEL
 from app.services.customers import generate_customer_code, log_customer_activity, recalculate_purchase_summary
 
@@ -54,12 +55,14 @@ DATE_FORMATS = [
 # Canonical display name -> normalized key used for header matching.
 REQUIRED_COLUMNS = {
     ImportType.PRODUCTS: ["Product Name", "SKU", "Category", "Unit Price", "Stock Quantity"],
+    ImportType.INVENTORY: ["SKU", "Stock Quantity", "Reason"],
     ImportType.CUSTOMERS: ["Name", "Email", "Phone"],
     ImportType.SALES: ["Customer", "Product", "Quantity", "Unit Price", "Sale Date"],
 }
 
 OPTIONAL_COLUMNS = {
     ImportType.PRODUCTS: ["Brand", "Description", "Cost Price", "Unit of Measure"],
+    ImportType.INVENTORY: ["Reorder Level", "Remarks"],
     ImportType.CUSTOMERS: ["Address", "City", "State", "Country", "Postal Code", "Customer Type"],
     ImportType.SALES: ["Invoice Number", "Sales Channel", "Payment Method"],
 }
@@ -154,11 +157,20 @@ class RowResult:
 
 def validate_rows(db: Session, company_id: str, import_type: ImportType, parsed: ParsedCSV) -> list[RowResult]:
     header_map = _header_map(parsed.fieldnames)
+
     if import_type == ImportType.PRODUCTS:
         return _validate_product_rows(db, company_id, parsed.rows, header_map)
+
+    if import_type == ImportType.INVENTORY:
+        return _validate_inventory_rows(db, company_id, parsed.rows, header_map)
+
     if import_type == ImportType.CUSTOMERS:
         return _validate_customer_rows(db, company_id, parsed.rows, header_map)
-    return _validate_sale_rows(db, company_id, parsed.rows, header_map)
+
+    if import_type == ImportType.SALES:
+        return _validate_sale_rows(db, company_id, parsed.rows, header_map)
+
+    raise ValueError(f"Unsupported import type: {import_type}")
 
 
 # ---------------------------------------------------------------- PRODUCTS
@@ -206,6 +218,262 @@ def _validate_product_rows(db: Session, company_id: str, rows: list[dict], heade
 
     return results
 
+# ---------------------------------------------------------------- INVENTORY
+
+def _validate_inventory_rows(
+    db: Session,
+    company_id: str,
+    rows: list[dict],
+    header_map: dict,
+) -> list[RowResult]:
+
+    products = db.query(Product).filter(
+        Product.company_id == company_id
+    ).all()
+
+    products_by_sku = {
+        product.sku.lower(): product
+        for product in products
+    }
+
+    inventories = db.query(Inventory).filter(
+        Inventory.company_id == company_id
+    ).all()
+
+    inventory_by_product = {
+        inventory.product_id: inventory
+        for inventory in inventories
+    }
+
+    seen_skus: set[str] = set()
+    results = []
+
+    def parse_whole_number(value: str) -> Optional[int]:
+        try:
+            number = Decimal(value.replace(",", "").strip())
+
+            if not number.is_finite() or number < 0:
+                return None
+
+            if number != number.to_integral_value():
+                return None
+
+            return int(number)
+        except (InvalidOperation, AttributeError, ValueError):
+            return None
+
+    for i, row in enumerate(rows, start=1):
+        sku = _get(row, header_map, "SKU")
+        stock_raw = _get(row, header_map, "Stock Quantity")
+        reorder_raw = _get(row, header_map, "Reorder Level")
+        reason = _get(row, header_map, "Reason")
+        remarks = _get(row, header_map, "Remarks")
+
+        problems = []
+
+        if not sku:
+            problems.append("SKU is required")
+
+        stock = parse_whole_number(stock_raw)
+
+        if stock is None:
+            problems.append(
+                "Stock Quantity must be a non-negative whole number"
+            )
+
+        reorder_level = None
+
+        if reorder_raw:
+            reorder_level = parse_whole_number(reorder_raw)
+
+            if reorder_level is None:
+                problems.append(
+                    "Reorder Level must be a non-negative whole number"
+                )
+
+        if not reason:
+            problems.append("Reason is required")
+        elif len(reason) > 255:
+            problems.append("Reason cannot exceed 255 characters")
+
+        if len(remarks) > 1000:
+            problems.append("Remarks cannot exceed 1000 characters")
+
+        if problems:
+            results.append(
+                RowResult(i, row, ImportRowStatus.INVALID, "; ".join(problems))
+            )
+            continue
+
+        sku_lower = sku.lower()
+
+        if sku_lower in seen_skus:
+            results.append(
+                RowResult(i, row, ImportRowStatus.DUPLICATE, f"Duplicate SKU in file: {sku}")
+            )
+            continue
+
+        seen_skus.add(sku_lower)
+
+        product = products_by_sku.get(sku_lower)
+
+        if not product:
+            results.append(
+                RowResult(i, row, ImportRowStatus.INVALID, f"Product not found for SKU: {sku}")
+            )
+            continue
+
+        inventory = inventory_by_product.get(product.id)
+
+        if not inventory:
+            results.append(
+                RowResult(i, row, ImportRowStatus.INVALID, f"Inventory record not found for SKU: {sku}")
+            )
+            continue
+
+        if stock < inventory.reserved_stock:
+            results.append(
+                RowResult(
+                    i,
+                    row,
+                    ImportRowStatus.INVALID,
+                    f"Target stock ({stock}) cannot be below reserved stock ({inventory.reserved_stock})",
+                )
+            )
+            continue
+
+        results.append(RowResult(i, row, None))
+
+    return results
+
+# ---------------------------------------------------------------- INVENTORY PROCESSING
+
+def process_inventory_row(
+    db: Session,
+    company_id: str,
+    row: dict,
+    header_map: dict,
+    performed_by: str,
+) -> Inventory:
+
+    sku = _get(row, header_map, "SKU")
+    stock_raw = _get(row, header_map, "Stock Quantity")
+    reorder_raw = _get(row, header_map, "Reorder Level")
+    reason = _get(row, header_map, "Reason")
+    remarks = _get(row, header_map, "Remarks") or None
+
+    # Resolve product within the authenticated company.
+    product = db.query(Product).filter(
+        Product.company_id == company_id,
+        Product.sku.ilike(sku),
+    ).first()
+
+    if not product:
+        raise ValueError(f"Product not found for SKU: {sku}")
+
+    # Lock inventory row to prevent concurrent stock updates.
+    inventory = db.query(Inventory).filter(
+        Inventory.company_id == company_id,
+        Inventory.product_id == product.id,
+    ).with_for_update().first()
+
+    if not inventory:
+        raise ValueError(f"Inventory record not found for SKU: {sku}")
+
+    # Parse target stock quantity.
+    try:
+        stock_decimal = Decimal(stock_raw.replace(",", "").strip())
+
+        if (
+            not stock_decimal.is_finite()
+            or stock_decimal < 0
+            or stock_decimal != stock_decimal.to_integral_value()
+        ):
+            raise ValueError
+
+        target_stock = int(stock_decimal)
+
+    except (InvalidOperation, AttributeError, ValueError):
+        raise ValueError("Stock Quantity must be a non-negative whole number")
+
+    # Validate reserved stock again immediately before processing.
+    if target_stock < inventory.reserved_stock:
+        raise ValueError(
+            f"Target stock ({target_stock}) cannot be below "
+            f"reserved stock ({inventory.reserved_stock})"
+        )
+
+    # Validate optional reorder level.
+    new_reorder_level = inventory.reorder_level
+
+    if reorder_raw:
+        try:
+            reorder_decimal = Decimal(reorder_raw.replace(",", "").strip())
+
+            if (
+                not reorder_decimal.is_finite()
+                or reorder_decimal < 0
+                or reorder_decimal != reorder_decimal.to_integral_value()
+            ):
+                raise ValueError
+
+            new_reorder_level = int(reorder_decimal)
+
+        except (InvalidOperation, AttributeError, ValueError):
+            raise ValueError("Reorder Level must be a non-negative whole number")
+
+    if not reason or len(reason) > 255:
+        raise ValueError("Reason is required and cannot exceed 255 characters")
+
+    if remarks and len(remarks) > 1000:
+        raise ValueError("Remarks cannot exceed 1000 characters")
+
+    previous_stock = inventory.current_stock
+    previous_reorder_level = inventory.reorder_level
+
+    delta = target_stock - previous_stock
+
+    # Update inventory and product catalog together.
+    inventory.current_stock = target_stock
+    inventory.reorder_level = new_reorder_level
+
+    inventory.update_status()
+
+    product.stock_quantity = target_stock
+
+    # Record stock movement only when the quantity changes.
+    if delta != 0:
+        movement_type = (
+            MovementType.STOCK_ADDITION
+            if delta > 0
+            else MovementType.STOCK_REMOVAL
+        )
+
+        movement = InventoryMovement(
+            inventory_id=inventory.id,
+            movement_type=movement_type,
+            quantity_changed=delta,
+            previous_quantity=previous_stock,
+            updated_quantity=target_stock,
+            reason=reason,
+            remarks=remarks,
+            performed_by=performed_by,
+        )
+
+        db.add(movement)
+
+    # Re-evaluate alerts after stock or reorder-level changes.
+    if delta != 0 or new_reorder_level != previous_reorder_level:
+        evaluate_product_stock_alert(
+            db,
+            company_id,
+            inventory,
+            product,
+        )
+
+    db.flush()
+
+    return inventory
 
 # ---------------------------------------------------------------- CUSTOMERS
 
@@ -260,6 +528,29 @@ def _validate_customer_rows(db: Session, company_id: str, rows: list[dict], head
 
 # ---------------------------------------------------------------- SALES
 
+def _parse_sales_channel(value: str) -> SalesChannel:
+    raw = (value or "").strip().upper()
+    normalized = raw.replace("-", "_").replace(" ", "_")
+
+    channel_map = {
+        "RETAIL": SalesChannel.RETAIL_STORE,
+        "RETAIL_STORE": SalesChannel.RETAIL_STORE,
+        "ONLINE": SalesChannel.ONLINE_STORE,
+        "ONLINE_STORE": SalesChannel.ONLINE_STORE,
+        "MARKETPLACE": SalesChannel.MARKETPLACE,
+    }
+
+    if not normalized:
+        return SalesChannel.RETAIL_STORE
+
+    if normalized not in channel_map:
+        raise ValueError(
+            f"Unsupported Sales Channel: {value}. "
+            "Allowed values: Retail Store, Online, Marketplace"
+        )
+
+    return channel_map[normalized]
+
 def _validate_sale_rows(db: Session, company_id: str, rows: list[dict], header_map: dict) -> list[RowResult]:
     products = db.query(Product).filter(Product.company_id == company_id).all()
     products_by_sku = {p.sku.lower(): p for p in products}
@@ -290,7 +581,16 @@ def _validate_sale_rows(db: Session, company_id: str, rows: list[dict], header_m
         date_raw = _get(row, header_map, "Sale Date")
         invoice_raw = _get(row, header_map, "Invoice Number")
 
+        # Validate Sales Channel
+        channel_raw = _get(row, header_map, "Sales Channel")
+
         problems = []
+
+        try:
+            _parse_sales_channel(channel_raw)
+        except ValueError as exc:
+            problems.append(str(exc))
+
         if not customer_ref:
             problems.append("Customer is required")
         if not product_ref:
@@ -466,13 +766,10 @@ def process_sale_row(db: Session, company_id: str, row: dict, header_map: dict, 
     unit_price = _parse_decimal(_get(row, header_map, "Unit Price"))
     sale_date = _parse_date(_get(row, header_map, "Sale Date")) or datetime.utcnow()
     invoice_raw = _get(row, header_map, "Invoice Number")
-    channel_raw = _get(row, header_map, "Sales Channel").upper().replace(" ", "_")
+    channel_raw = _get(row, header_map, "Sales Channel")
     payment_raw = _get(row, header_map, "Payment Method").upper()
 
-    try:
-        sales_channel = SalesChannel(channel_raw) if channel_raw else SalesChannel.RETAIL_STORE
-    except ValueError:
-        sales_channel = SalesChannel.RETAIL_STORE
+    sales_channel = _parse_sales_channel(channel_raw)
     try:
         payment_method = PaymentMethod(payment_raw) if payment_raw else PaymentMethod.CASH
     except ValueError:

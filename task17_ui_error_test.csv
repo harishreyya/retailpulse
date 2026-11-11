@@ -1,0 +1,4 @@
+Product Name,SKU,Category,Unit Price,Stock Quantity,Brand
+Valid Error Test Product,TASK17-ERROR-VALID-001,Electronics,199,10,TestBrand
+Negative Price Product,TASK17-ERROR-INVALID-002,Electronics,-50,5,TestBrand
+Invalid Stock Product,TASK17-ERROR-INVALID-003,Electronics,100,abc,TestBrand

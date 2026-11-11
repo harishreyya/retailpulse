@@ -1,0 +1,2 @@
+Product Name,SKU,Category,Unit Price,Stock Quantity,Brand,Description,Cost Price,Unit of Measure,Row Number,Issue Type,Error Reason
+Task17 Invalid Error Test,TP-ERROR-INVALID-001,DQ Test Category,-100,5,RetailPulse,Invalid negative price,-50,piece,2,INVALID,Unit Price must be a number greater than zero

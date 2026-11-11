@@ -160,7 +160,7 @@ The following functionality was manually verified:
 
 ## 11. Known Limitations
 
-- Automatic validation triggers after sales, inventory adjustments, product/customer updates, and imports are not yet implemented and verified.
+- Task 17 introduces targeted Data Quality checks after Products, Inventory, Customers, and Sales imports. Automatic validation triggers for other business operations remain outside this Task 17 integration.
 - Targeted validation optimization remains future work.
 - Historical reserved-stock availability is not reconstructed.
 - Missing customer purchase summaries are not explicitly detected.
@@ -170,3 +170,104 @@ The following functionality was manually verified:
 ## 12. Summary
 
 Task 16 adds centralized data validation, manual reconciliation, issue detection, duplicate handling, investigation, resolution tracking, execution history, and Audit Logs integration to RetailPulse Analytics.
+
+
+---
+
+# Task 17 — Advanced Data Import & Bulk Processing
+
+## 1. Overview
+
+Task 17 introduces a centralized CSV-based data import module for Products, Inventory, Customers, and Sales.
+
+The module provides file upload, validation, import processing, progress tracking, cancellation, error reporting, import history, notifications, audit logging, and targeted Data Quality integration.
+
+## 2. Core Features
+
+- CSV upload with file validation and a 10 MB size limit.
+- Downloadable CSV templates for all four import types.
+- Required-column and row-level validation.
+- Duplicate detection and handling.
+- Background import processing.
+- Row-level error handling and progress tracking.
+- Import cancellation.
+- Import history and detailed import information.
+- JSON and CSV error reports.
+- Import lifecycle notifications.
+- Audit Logs integration.
+- Targeted Data Quality checks after import processing.
+- Company-level data isolation and role-based authorization.
+
+## 3. Supported Import Types
+
+| Import Type | Purpose |
+|---|---|
+| Products | Import product information and initial stock quantities |
+| Inventory | Update stock quantities for existing products |
+| Customers | Import customer information |
+| Sales | Import sales transactions linked to existing customers and products |
+
+## 4. Backend and Frontend Implementation
+
+**Backend:**
+- `backend/app/routers/imports.py` — Import API endpoints and processing workflow.
+- `backend/app/services/data_quality.py` — Targeted Data Quality integration.
+- `backend/app/services/audit_logs.py` — Audit logging support.
+- `backend/app/models/notifications.py` — Import notification types.
+
+**Frontend:**
+- `frontend/src/api/imports.ts` — Import API integration.
+- Data Import page — CSV upload, validation, history, progress, and details.
+
+## 5. API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/import/upload` | Upload CSV |
+| POST | `/import/{import_id}/validate` | Validate import |
+| POST | `/import/{import_id}/process` | Start processing |
+| GET | `/import/history` | Retrieve import history |
+| GET | `/import/{import_id}` | Retrieve import details |
+| GET | `/import/{import_id}/progress` | Retrieve progress |
+| POST | `/import/{import_id}/cancel` | Cancel import |
+| GET | `/import/{import_id}/errors` | Retrieve error report |
+| GET | `/import/templates/{import_type}` | Download CSV template |
+
+## 6. Documentation
+
+Detailed implementation and usage documentation:
+
+- [Task 17 — Advanced Data Import & Bulk Processing](docs/TASK_17_DATA_IMPORT.md)
+- [Task 17 — API Documentation](docs/API_DOCUMENTATION.md)
+
+Interactive API documentation is available through FastAPI Swagger UI at:
+
+`http://127.0.0.1:8000/docs`
+
+## 7. Verification Summary
+
+The following implementation checks were completed:
+
+- Backend Python compilation.
+- Frontend TypeScript type checking.
+- Frontend production build.
+- Product import through the UI.
+- Multi-row validation with valid and invalid records.
+- CSV error report download and inspection.
+- Import cancellation and progress verification.
+- Selected notification and audit integration checks.
+
+Not every import type and every possible failure scenario received end-to-end runtime testing.
+
+## 8. Known Limitations
+
+- Background processing currently uses FastAPI BackgroundTasks rather than a durable distributed job queue.
+- Upload size enforcement occurs after the file has been read into memory.
+- File extension validation does not independently verify file content.
+- CSV error exports need spreadsheet formula-injection protection.
+- Sales duplicate detection depends on an invoice number being supplied.
+- Additional end-to-end and automated tests are future improvements.
+
+## 9. Summary
+
+Task 17 extends RetailPulse Analytics with centralized bulk data importing and integrates the workflow with the existing authentication, database, notification, audit, and Data Quality modules.

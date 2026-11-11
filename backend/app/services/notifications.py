@@ -74,6 +74,7 @@ ROLES_FOR_TYPE: dict[NotificationType, list[UserRole]] = {
     NotificationType.FORECAST_STOCK_RUNOUT: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.ANALYST],
     NotificationType.FORECAST_DEMAND_EXCEEDS_STOCK: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.ANALYST],
     NotificationType.FORECAST_DEMAND_GROWTH: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN, UserRole.ANALYST],
+    NotificationType.IMPORT_STARTED: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN],
     NotificationType.IMPORT_COMPLETED: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN],
     NotificationType.IMPORT_FAILED: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN],
     NotificationType.DATA_IMPORT_COMPLETED: [UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN],

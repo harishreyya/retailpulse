@@ -1,0 +1,3 @@
+SKU,Stock Quantity,Reason,Reorder Level,Remarks
+DQ-TEST-001,-5,Invalid negative stock,10,Negative quantity test
+INVALID-SKU-999,20,Unknown product,10,SKU validation test
