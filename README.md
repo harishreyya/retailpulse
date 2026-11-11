@@ -23,6 +23,57 @@ The module provides file upload, validation, import processing, progress trackin
 - Targeted Data Quality checks after import processing.
 - Company-level data isolation and role-based authorization.
 
+### Core Features — Screenshots
+Figure 17.1 — Data Import Dashboard
+
+![Data Import Dashboard](https://github.com/user-attachments/assets/c74ec8d2-f6e8-43b2-b4ec-1f40bf475705)
+
+
+Figure 17.2 — Download CSV template
+
+![CSV Upload](https://github.com/user-attachments/assets/636c1b19-238d-465d-b4d1-e05897276216)
+
+Figure 17.2 — CSV file upload and validation results
+
+![csv file uload](https://github.com/user-attachments/assets/41928cbe-489c-4704-9a14-cda4b102740c)
+
+
+Figure 17.2 —  CSV file upload error reports.
+
+![ CSV error reports](https://github.com/user-attachments/assets/1e791317-6b16-4828-a4cc-fea9256a9adb)
+
+Figure 17.2 —  Bulk rows processing and cancelled import.
+
+![ Bulk rows](https://github.com/user-attachments/assets/510a8391-12e7-4a69-b542-5e15bb0bcb2e)
+
+
+Figure 17.3 — Import Processing and Progress
+
+![csv file uload](https://github.com/user-attachments/assets/333bcc55-b151-4cf2-bb28-564305fc75a4)
+
+
+Figure 17.4 —  Import view details
+
+![Import Processing](https://github.com/user-attachments/assets/1624d4dc-2346-43dc-9dc2-275d569fcd86)
+
+Figure 17.4 — Import view details for error records.
+
+![Background import processing](https://github.com/user-attachments/assets/d16565d7-edb2-4ae6-a653-d2bacca5e8fd)
+
+Figure 17.5 — Import History and Details
+
+![Import history ](https://github.com/user-attachments/assets/c3578cbc-354d-456e-b95b-03ae0e631622)
+
+
+Figure 17.5 — Import history showing previous import jobs and their statuses.
+
+![Import History and Details](https://github.com/user-attachments/assets/a7aa19b6-c96a-4447-b2bb-d312fe9ab98b)
+
+Figure 17.6 — Audit logs.
+
+![Audit logs](https://github.com/user-attachments/assets/e24340ed-b540-4de2-859b-779fe5fa52b0)
+
+
 ## 3. Supported Import Types
 
 | Import Type | Purpose |
