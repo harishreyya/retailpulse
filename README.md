@@ -315,7 +315,6 @@ The following functionality was manually verified:
 
 ## 11. Known Limitations
 
-- Task 17 introduces targeted Data Quality checks after Products, Inventory, Customers, and Sales imports. Automatic validation triggers for other business operations remain outside this Task 17 integration.
 - Targeted validation optimization remains future work.
 - Historical reserved-stock availability is not reconstructed.
 - Missing customer purchase summaries are not explicitly detected.
