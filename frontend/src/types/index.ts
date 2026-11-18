@@ -859,6 +859,7 @@ export interface ImportUploadResponse {
   import_type: ImportType;
   filename: string;
   status: ImportStatus;
+  workflow_request_id?: string | null;
   detected_columns: string[];
   missing_columns: string[];
   preview_rows: ImportPreviewRow[];

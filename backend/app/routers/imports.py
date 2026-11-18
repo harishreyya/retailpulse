@@ -36,6 +36,12 @@ from app.dependencies import require_roles, get_current_company_id
 from app.audit import log_action
 from app.services import imports as import_service
 from app.services.customers import recalculate_purchase_summary
+from app.models.workflow import (
+    WorkflowRequest,
+    WorkflowRequestType,
+    WorkflowRequestStatus,
+)
+from app.services import workflow as workflow_service
 
 router = APIRouter(prefix="/import", tags=["data-import"])
 
@@ -118,8 +124,8 @@ def _stage_validation(db: Session, job: ImportJob, results: list[import_service.
     job.invalid_records = invalid
     job.duplicate_records = duplicate
     job.status = ImportStatus.VALIDATED
-    db.commit()
-    db.refresh(job)
+    # db.commit()
+    # db.refresh(job)
     return ImportValidationSummary(
         total_records=job.total_records, valid_records=valid,
         invalid_records=invalid, duplicate_records=duplicate,
@@ -254,10 +260,32 @@ async def upload_import(
     request: Request,
     import_type: ImportType = Form(...),
     file: UploadFile = File(...),
+    approval_reason: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     company_id: str = Depends(get_current_company_id),
-    current_user: User = Depends(require_roles(ADMIN_ONLY)),
+    current_user: User = Depends(
+    require_roles([
+        UserRole.COMPANY_ADMIN,
+        UserRole.SUPER_ADMIN,
+        UserRole.ANALYST,
+    ])
+),
 ):
+    # Analysts can upload Inventory CSV files only.
+    if (
+        current_user.role == UserRole.ANALYST
+        and import_type != ImportType.INVENTORY
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Analysts are only allowed to upload Inventory CSV files.",
+        )
+    if import_type == ImportType.INVENTORY:
+      if not approval_reason or not approval_reason.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="An approval reason is required for Inventory imports.",
+        )
     filename = file.filename or ""
 
     if not filename.lower().endswith(".csv"):
@@ -305,6 +333,42 @@ async def upload_import(
     results = import_service.validate_rows(db, company_id, import_type, parsed)
     summary = _stage_validation(db, job, results)
 
+    workflow_request_id = None
+
+    if import_type == ImportType.INVENTORY:
+      workflow_request = workflow_service.create_workflow_request(
+        db=db,
+        request=request,
+        company_id=company_id,
+        current_user=current_user,
+        request_type=WorkflowRequestType.INVENTORY_IMPORT,
+        requested_changes={
+            "import_id": str(job.id),
+            "filename": job.filename,
+            "total_records": summary.total_records,
+            "valid_records": summary.valid_records,
+            "invalid_records": summary.invalid_records,
+            "duplicate_records": summary.duplicate_records,
+        },
+        reason=approval_reason,
+        related_record_type="IMPORT_JOB",
+        related_record_id=str(job.id),
+        before_values={
+            "status": job.status.value,
+        },
+    )
+
+    workflow_request = workflow_service.submit_workflow_request(
+        db=db,
+        request=request,
+        company_id=company_id,
+        workflow_request_id=workflow_request.id,
+        current_user=current_user,
+        comments="Inventory CSV uploaded and submitted for approval.",
+    )
+
+    workflow_request_id = workflow_request.id
+
     log_action(
     db,
     request,
@@ -329,6 +393,7 @@ async def upload_import(
 
     return ImportUploadResponse(
         import_id=job.id,
+        workflow_request_id=workflow_request_id,
         import_type=import_type,
         filename=job.filename,
         status=job.status,
@@ -354,12 +419,24 @@ def revalidate_import(
     product) between uploading and processing.
     """
     job = _get_job_or_404(db, company_id, import_id)
+    if job.import_type == ImportType.INVENTORY:
+      raise HTTPException(
+        status_code=409,
+        detail=(
+            "Inventory imports cannot be revalidated after submission "
+            "for approval. Please upload a new CSV to create a new "
+            "approval request."
+        ),
+    )
     if job.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_ERRORS, ImportStatus.PROCESSING):
         raise HTTPException(status_code=400, detail=f"Import is already {job.status.value.lower()} and cannot be re-validated")
 
     parsed = import_service.parse_csv_text(job.raw_content)
     results = import_service.validate_rows(db, company_id, job.import_type, parsed)
     summary = _stage_validation(db, job, results)
+
+    db.commit()
+    db.refresh(job)
 
     preview_rows = [ImportPreviewRow(row_number=r.row_number, data=r.data) for r in results[:PREVIEW_ROW_LIMIT]]
     row_issues = [
@@ -391,6 +468,26 @@ def process_import(
     current_user: User = Depends(require_roles(ADMIN_ONLY)),
 ):
     job = _get_job_or_404(db, company_id, import_id)
+    if job.import_type == ImportType.INVENTORY:
+        if job.status != ImportStatus.VALIDATED:
+            raise HTTPException(
+                status_code=409,
+                detail="Only validated inventory imports can be processed.",
+            )
+
+        approved_request = db.query(WorkflowRequest).filter(
+            WorkflowRequest.company_id == company_id,
+            WorkflowRequest.request_type == WorkflowRequestType.INVENTORY_IMPORT,
+            WorkflowRequest.related_record_type == "IMPORT_JOB",
+            WorkflowRequest.related_record_id == job.id,
+            WorkflowRequest.status == WorkflowRequestStatus.APPROVED,
+        ).first()
+
+        if not approved_request:
+            raise HTTPException(
+                status_code=409,
+                detail="Inventory import must be approved before processing.",
+            )
 
     if job.status in (
         ImportStatus.COMPLETED,

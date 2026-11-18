@@ -104,3 +104,35 @@ __all__ += [
     "ReportHistoryRow", "ReportHistoryListResponse", "ReportFilterOptions",
     "ReportScheduleCreate", "ReportScheduleUpdate", "ReportScheduleOut", "ReportScheduleListResponse",
 ]
+
+from app.schemas.workflow import (
+    WorkflowRequestCreate,
+    WorkflowSubmitRequest,
+    WorkflowApproveRequest,
+    WorkflowRejectRequest,
+    WorkflowCancelRequest,
+    WorkflowHistoryOut,
+    WorkflowRequestOut,
+    WorkflowRequestListResponse,
+    WorkflowPendingCountOut,
+    WorkflowConfigCreate,
+    WorkflowConfigUpdate,
+    WorkflowConfigOut,
+    WorkflowConfigListResponse,
+)
+
+__all__ += [
+    "WorkflowRequestCreate",
+    "WorkflowSubmitRequest",
+    "WorkflowApproveRequest",
+    "WorkflowRejectRequest",
+    "WorkflowCancelRequest",
+    "WorkflowHistoryOut",
+    "WorkflowRequestOut",
+    "WorkflowRequestListResponse",
+    "WorkflowPendingCountOut",
+    "WorkflowConfigCreate",
+    "WorkflowConfigUpdate",
+    "WorkflowConfigOut",
+    "WorkflowConfigListResponse",
+]

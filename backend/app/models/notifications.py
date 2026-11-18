@@ -30,6 +30,11 @@ class NotificationType(str, enum.Enum):
     # Kept for backward compatibility with any existing rows written under
     # the old name before IMPORT_COMPLETED/IMPORT_FAILED were split out.
     DATA_IMPORT_COMPLETED = "DATA_IMPORT_COMPLETED"
+        # Task 18: Workflow & Approval Management
+    WORKFLOW_REQUEST_SUBMITTED = "WORKFLOW_REQUEST_SUBMITTED"
+    WORKFLOW_REQUEST_APPROVED = "WORKFLOW_REQUEST_APPROVED"
+    WORKFLOW_REQUEST_REJECTED = "WORKFLOW_REQUEST_REJECTED"
+    WORKFLOW_REQUEST_CANCELLED = "WORKFLOW_REQUEST_CANCELLED"
 
 
 class NotificationPriority(str, enum.Enum):

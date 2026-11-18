@@ -1,4 +1,189 @@
 
+
+# Task 18 — Workflow & Approval Management
+
+## 1. Overview
+
+Task 18 introduces a centralized Workflow & Approval Management module to RetailPulse Analytics.
+
+The module manages approval requests for sensitive business operations. Users can create and submit requests, while authorized approvers can review, approve, or reject them before the corresponding business changes are applied.
+
+It also provides workflow configuration, approval history, notifications, audit logging, and integration with the existing Inventory, Products, Customers, and Data Import modules.
+
+## 2. Core Features
+
+- Centralized workflow request management.
+- Support for Stock Adjustment.
+- Support for Product Deactivation.
+- Support for Product Price Change.
+- Support for Customer Information Change.
+- Support for Inventory Import Approval.
+- Request creation, submission, approval, rejection, and cancellation.
+- Controlled workflow status transitions.
+- Role-based approval authorization.
+- Company-level data isolation.
+- Configurable approver roles and approval requirements.
+- Configurable self-approval restrictions.
+- Approval history with comments and timestamps.
+- Notifications for workflow approval events.
+- Audit Logs integration.
+- Backend validation before applying approved business changes.
+- Inventory import processing restricted until approval is granted.
+
+## 3. Supported Workflow Types
+
+| Workflow Type | Purpose |
+|---|---|
+| STOCK_ADJUSTMENT | Request approval for inventory stock changes |
+| PRODUCT_DEACTIVATION | Request approval to deactivate a product |
+| PRODUCT_PRICE_CHANGE | Request approval for product price changes |
+| CUSTOMER_INFORMATION_CHANGE | Request approval for customer information updates |
+| INVENTORY_IMPORT | Request approval before processing an inventory CSV import |
+
+## 4. Workflow Status Lifecycle
+
+Workflow requests follow a controlled lifecycle:
+
+| Current Status | Allowed Next Status |
+|---|---|
+| DRAFT | SUBMITTED, CANCELLED |
+| SUBMITTED | PENDING_APPROVAL, CANCELLED |
+| PENDING_APPROVAL | APPROVED, REJECTED, CANCELLED |
+| APPROVED | No further transition |
+| REJECTED | No further transition |
+| CANCELLED | No further transition |
+
+Invalid status transitions are rejected by the backend.
+
+## 5. Approval and Authorization
+
+The module uses authenticated user context, role-based authorization, and company-level data isolation.
+
+Key controls include:
+
+- Authorized approver roles: COMPANY_ADMIN and SUPER_ADMIN, subject to workflow configuration.
+- Non-admin users can access their own workflow requests.
+- Administrators can review requests within their company according to backend permissions.
+- Approval permissions are validated by the backend.
+- Self-approval is controlled by the `allow_self_approval` configuration.
+- Business changes are applied through the approval process rather than when a request is initially created.
+
+## 6. Workflow Configuration
+
+Administrators can manage approval configurations for supported workflow types.
+
+Configuration options include:
+
+- Approver role.
+- Approval required.
+- Active or inactive configuration.
+- Self-approval permission.
+
+This allows approval behavior to be managed centrally for different business operations.
+
+## 7. Approval History, Notifications and Audit Logs
+
+The module maintains approval history for workflow activities.
+
+History records include:
+
+- Workflow request identifier.
+- Actor identifier.
+- Action performed.
+- Previous and new status.
+- Approval or rejection comments.
+- Activity timestamp.
+
+Workflow events are also integrated with the Notifications and Audit Logs modules to support activity tracking and accountability.
+
+## 8. Inventory Import Approval Integration
+
+Inventory CSV imports are integrated with the centralized approval workflow.
+
+The process follows these steps:
+
+1. Upload an Inventory CSV file.
+2. Provide an approval reason.
+3. Validate the uploaded records.
+4. Automatically create an INVENTORY_IMPORT workflow request.
+5. Submit the request for approval.
+6. An authorized approver reviews the request.
+7. After approval, the inventory import can be processed.
+8. The existing import pipeline updates inventory records and records processing results.
+
+The backend prevents inventory import processing until the associated workflow request is APPROVED.
+
+## 9. Backend and Frontend Implementation
+
+**Backend files**
+
+| File | Responsibility |
+|---|---|
+| `backend/app/models/workflow.py` | Workflow request, approval history, and configuration models |
+| `backend/app/schemas/workflow.py` | Workflow request and configuration schemas |
+| `backend/app/services/workflow.py` | Workflow lifecycle, validation, approval, and business change logic |
+| `backend/app/routers/workflow.py` | Workflow API endpoints |
+| `backend/app/routers/imports.py` | Inventory import approval integration |
+
+**Frontend files**
+
+| File | Responsibility |
+|---|---|
+| `frontend/src/pages/Workflows.tsx` | Workflow request management, approvals, history, and configuration |
+| `frontend/src/api/workflow.ts` | Workflow API integration |
+| `frontend/src/types/workflow.ts` | Workflow TypeScript interfaces |
+| `frontend/src/pages/DataImport.tsx` | Inventory import approval reason and workflow integration |
+| `frontend/src/api/imports.ts` | Import API integration |
+
+## 10. API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/workflow/requests` | Create workflow request |
+| POST | `/workflow/requests/{id}/submit` | Submit request |
+| GET | `/workflow/requests` | List workflow requests |
+| GET | `/workflow/requests/{id}` | Retrieve request details |
+| POST | `/workflow/requests/{id}/approve` | Approve request |
+| POST | `/workflow/requests/{id}/reject` | Reject request |
+| POST | `/workflow/requests/{id}/cancel` | Cancel request |
+| GET | `/workflow/pending-counts` | Retrieve pending approval counts |
+| GET | `/workflow/configs` | List workflow configurations |
+| POST | `/workflow/configs` | Create workflow configuration |
+| PATCH | `/workflow/configs/{config_id}` | Update workflow configuration |
+
+The Inventory Import processing endpoint remains:
+
+`POST /import/{import_id}/process`
+
+This endpoint verifies that the associated Inventory Import workflow request has been approved before processing.
+
+## 11. Verification Summary
+
+The following Task 18 workflows were manually tested:
+
+- Stock Adjustment request creation and submission.
+- Cross-account approval using a separate authorized approver account.
+- Inventory stock update after approval.
+- Product Price Change rejection.
+- Verification that rejected price changes do not modify the product price.
+- Workflow request cancellation.
+- Verification that cancelled requests cannot subsequently be approved.
+- Verification that cancellation does not modify inventory stock.
+- Inventory Import approval integration.
+- Verification that inventory processing is blocked before approval.
+- Approval of an Inventory Import request by a separate approver account.
+- Successful inventory import processing after approval.
+- Verification of the resulting inventory stock update.
+- Approval history and notification checks.
+- Audit Logs integration checks.
+
+## 12. Summary
+
+Task 18 extends RetailPulse Analytics with centralized workflow and approval management for important business operations. It integrates approval controls with inventory, products, customers, and data importing while maintaining company-level isolation, role-based authorization, approval history, notifications, and audit logging.
+
+---
+
+
 # Task 17 — Advanced Data Import & Bulk Processing
 
 ## 1. Overview

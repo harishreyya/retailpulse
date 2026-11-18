@@ -24,6 +24,7 @@ import Reports from "./pages/Reports";
 import ScheduledReports from "./pages/ScheduledReports";
 import AuditLogs from "./pages/AuditLogs";
 import DataQuality from "./pages/DataQuality";
+import Workflows from "./pages/Workflows";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/workflows" element={<Workflows />} />
               </Route>
             </Route>
 

@@ -33,6 +33,15 @@ from app.models.data_quality import (
     ReconciliationRun,
     DataQualityIssueEvent,
 )
+
+from app.models.workflow import (
+    WorkflowRequestType,
+    WorkflowRequestStatus,
+    WorkflowRequest,
+    WorkflowApprovalHistory,
+    WorkflowConfig,
+)
+
 __all__ = [
     "UserRole", "UserStatus", "Company", "User", "RefreshToken", "AuditLog", "AuditStatus",
     "CategoryStatus", "ProductStatus", "Category", "Product",
@@ -43,5 +52,6 @@ __all__ = [
     "Customer", "CustomerPurchaseSummary", "CustomerActivity",
     "ForecastPeriod", "RecommendationType", "StockRisk", "DemandForecast", "ForecastHistory",
     "ImportType", "ImportStatus", "ImportRowStatus", "ImportJob", "ImportError",
-    "ReportType", "ReportFormat", "ReportStatus", "ScheduleFrequency", "Report", "ReportSchedule", "DataQualityIssue", "ReconciliationRun", "DataQualityIssueEvent"
+    "ReportType", "ReportFormat", "ReportStatus", "ScheduleFrequency", "Report", "ReportSchedule", "DataQualityIssue", "ReconciliationRun", "DataQualityIssueEvent","WorkflowRequestType",
+    "WorkflowRequestStatus","WorkflowRequest","WorkflowApprovalHistory","WorkflowConfig",
 ]

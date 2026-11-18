@@ -238,6 +238,90 @@ def list_movements(
     return MovementListResponse(items=[_serialize_movement(m) for m in items], total=total)
 
 
+# @router.post("/{inventory_id}/adjust", response_model=InventoryOut)
+# def adjust_stock(
+#     inventory_id: str,
+#     payload: StockAdjustmentCreate,
+#     request: Request,
+#     db: Session = Depends(get_db),
+#     company_id: str = Depends(get_current_company_id),
+#     current_user: User = Depends(require_roles(ADMIN_ONLY)),
+# ):
+#     inventory = _get_inventory_or_404(db, company_id, inventory_id)
+#     product = inventory.product
+
+#     if payload.adjustment_type == AdjustmentType.STOCK_IN:
+#         movement_type = MovementType.STOCK_ADDITION
+#         delta = payload.quantity
+#     elif payload.adjustment_type == AdjustmentType.STOCK_OUT:
+#         movement_type = MovementType.STOCK_REMOVAL
+#         delta = -payload.quantity
+#     else:
+#         movement_type = MovementType.MANUAL_ADJUSTMENT
+#         delta = payload.quantity if payload.direction == AdjustmentDirection.INCREASE else -payload.quantity
+
+#     if delta < 0 and abs(delta) > inventory.available_stock:
+#         raise HTTPException(status_code=400, detail="Stock Out quantity cannot exceed available stock")
+
+#     previous_quantity = inventory.current_stock
+#     new_current = previous_quantity + delta
+#     if new_current < 0:
+#         raise HTTPException(status_code=400, detail="Stock quantity cannot become negative")
+
+#     previous_status = inventory.stock_status
+
+#     inventory.current_stock = new_current
+#     inventory.available_stock = max(0, new_current - inventory.reserved_stock)
+#     inventory.stock_status = compute_stock_status(inventory.available_stock, inventory.reorder_level)
+
+#     # Keep the Product catalog's stock_quantity field (Task 2/3) in sync.
+#     product.stock_quantity = new_current
+
+#     movement = InventoryMovement(
+#         inventory_id=inventory.id,
+#         movement_type=movement_type,
+#         quantity_changed=delta,
+#         previous_quantity=previous_quantity,
+#         updated_quantity=new_current,
+#         reason=payload.reason,
+#         remarks=payload.remarks,
+#         performed_by=current_user.id,
+#     )
+#     db.add(movement)
+
+#     _notify_status_change(db, company_id, inventory, previous_status)
+
+#     is_manual = movement_type == MovementType.MANUAL_ADJUSTMENT
+#     if is_manual:
+#         notify_roles(
+#             db, company_id, NotificationType.MANUAL_ADJUSTMENT,
+#             title="Manual Stock Adjustment",
+#             message=f'Stock for "{product.name}" was manually adjusted ({delta:+d}).',
+#             priority=NotificationPriority.LOW,
+#             product_id=product.id, resource_type="Product", resource_id=product.id,
+#         )
+
+#     db.commit()
+#     db.refresh(inventory)
+
+#     action_map = {
+#         MovementType.STOCK_ADDITION: "Stock Added",
+#         MovementType.STOCK_REMOVAL: "Stock Removed",
+#         MovementType.MANUAL_ADJUSTMENT: "Stock Adjusted",
+#     }
+#     log_action(
+#         db, request, action_map[movement_type],
+#         company_id=company_id, user_id=current_user.id,
+#         entity_name=product.name,
+#         details=f"Stock {'increased' if delta > 0 else 'decreased'} from {new_current - delta} to {new_current}",
+#         resource_type="Product", resource_id=product.id,
+#         before={"stock_quantity": new_current - delta}, after={"stock_quantity": new_current},
+#     )
+#     db.commit()
+
+#     return _serialize_inventory(inventory)
+
+
 @router.post("/{inventory_id}/adjust", response_model=InventoryOut)
 def adjust_stock(
     inventory_id: str,
@@ -247,79 +331,15 @@ def adjust_stock(
     company_id: str = Depends(get_current_company_id),
     current_user: User = Depends(require_roles(ADMIN_ONLY)),
 ):
-    inventory = _get_inventory_or_404(db, company_id, inventory_id)
-    product = inventory.product
-
-    if payload.adjustment_type == AdjustmentType.STOCK_IN:
-        movement_type = MovementType.STOCK_ADDITION
-        delta = payload.quantity
-    elif payload.adjustment_type == AdjustmentType.STOCK_OUT:
-        movement_type = MovementType.STOCK_REMOVAL
-        delta = -payload.quantity
-    else:
-        movement_type = MovementType.MANUAL_ADJUSTMENT
-        delta = payload.quantity if payload.direction == AdjustmentDirection.INCREASE else -payload.quantity
-
-    if delta < 0 and abs(delta) > inventory.available_stock:
-        raise HTTPException(status_code=400, detail="Stock Out quantity cannot exceed available stock")
-
-    previous_quantity = inventory.current_stock
-    new_current = previous_quantity + delta
-    if new_current < 0:
-        raise HTTPException(status_code=400, detail="Stock quantity cannot become negative")
-
-    previous_status = inventory.stock_status
-
-    inventory.current_stock = new_current
-    inventory.available_stock = max(0, new_current - inventory.reserved_stock)
-    inventory.stock_status = compute_stock_status(inventory.available_stock, inventory.reorder_level)
-
-    # Keep the Product catalog's stock_quantity field (Task 2/3) in sync.
-    product.stock_quantity = new_current
-
-    movement = InventoryMovement(
-        inventory_id=inventory.id,
-        movement_type=movement_type,
-        quantity_changed=delta,
-        previous_quantity=previous_quantity,
-        updated_quantity=new_current,
-        reason=payload.reason,
-        remarks=payload.remarks,
-        performed_by=current_user.id,
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            "Direct stock adjustments are disabled. "
+            "Please create and submit a Stock Adjustment "
+            "workflow request for approval."
+        ),
     )
-    db.add(movement)
 
-    _notify_status_change(db, company_id, inventory, previous_status)
-
-    is_manual = movement_type == MovementType.MANUAL_ADJUSTMENT
-    if is_manual:
-        notify_roles(
-            db, company_id, NotificationType.MANUAL_ADJUSTMENT,
-            title="Manual Stock Adjustment",
-            message=f'Stock for "{product.name}" was manually adjusted ({delta:+d}).',
-            priority=NotificationPriority.LOW,
-            product_id=product.id, resource_type="Product", resource_id=product.id,
-        )
-
-    db.commit()
-    db.refresh(inventory)
-
-    action_map = {
-        MovementType.STOCK_ADDITION: "Stock Added",
-        MovementType.STOCK_REMOVAL: "Stock Removed",
-        MovementType.MANUAL_ADJUSTMENT: "Stock Adjusted",
-    }
-    log_action(
-        db, request, action_map[movement_type],
-        company_id=company_id, user_id=current_user.id,
-        entity_name=product.name,
-        details=f"Stock {'increased' if delta > 0 else 'decreased'} from {new_current - delta} to {new_current}",
-        resource_type="Product", resource_id=product.id,
-        before={"stock_quantity": new_current - delta}, after={"stock_quantity": new_current},
-    )
-    db.commit()
-
-    return _serialize_inventory(inventory)
 
 
 @router.put("/{inventory_id}/reorder-level", response_model=InventoryOut)

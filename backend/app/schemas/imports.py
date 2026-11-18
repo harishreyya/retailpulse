@@ -32,6 +32,7 @@ class ImportValidationSummary(BaseModel):
 
 class ImportUploadResponse(BaseModel):
     import_id: str
+    workflow_request_id: Optional[str] = None
     import_type: ImportType
     filename: str
     status: ImportStatus

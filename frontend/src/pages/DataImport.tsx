@@ -11,7 +11,8 @@ import {
   getImportProgress,
   cancelImport,
 } from "../api/imports";
-
+// import { getWorkflowRequest } from "../api/workflow";
+import type { WorkflowRequest } from "../types/workflow";
 import type {
   ImportType,
   ImportUploadResponse,
@@ -82,6 +83,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function DataImport() {
   const [importType, setImportType] = useState<ImportType>("PRODUCTS");
   const [file, setFile] = useState<File | null>(null);
+  const [approvalReason, setApprovalReason] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
 const [uploadResult, setUploadResult] = useState<ImportUploadResponse | null>(null);
@@ -98,7 +100,8 @@ const [showAllIssues, setShowAllIssues] = useState(false);
   const [selectedImport, setSelectedImport] = useState<ImportJobDetail | null>(null);
 const [detailsLoading, setDetailsLoading] = useState(false);
 const [detailsError, setDetailsError] = useState<string | null>(null);
-
+const [workflowRequest, setWorkflowRequest] =
+  useState<WorkflowRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTypeDef = IMPORT_TYPES.find((t) => t.value === importType)!;
@@ -186,6 +189,8 @@ useEffect(() => {
   const resetWorkflow = () => {
     setFile(null);
     setFileError(null);
+    setApprovalReason("");
+    setWorkflowRequest(null);
     setStage("idle");
     setUploadResult(null);
     setProcessResult(null);
@@ -238,7 +243,7 @@ useEffect(() => {
     setStage("uploading");
     try {
       setStage("validating");
-      const result = await uploadImport(importType, file);
+      const result = await uploadImport(importType, file, approvalReason);
       setUploadResult(result);
       setProcessResult(null);
       setStage("ready");
@@ -416,10 +421,41 @@ const handleCancel = async () => {
 
         {fileError && <p className="form-error-text">{fileError}</p>}
 
+        {importType === "INVENTORY" && (
+  <div className="mt-4">
+    <label
+      htmlFor="approvalReason"
+      className="mb-2 block text-sm font-medium text-slate-700"
+    >
+      Approval Reason <span className="text-red-500">*</span>
+    </label>
+
+    <textarea
+      id="approvalReason"
+      value={approvalReason}
+      onChange={(e) => setApprovalReason(e.target.value)}
+      placeholder="Explain why this inventory update is required..."
+      rows={3}
+      required
+      disabled={stage === "uploading" || stage === "validating"}
+      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+    />
+
+    <p className="mt-1 text-xs text-slate-500">
+      This reason will be included in the workflow approval request.
+    </p>
+  </div>
+)}
+
         <div className="mt-4 flex items-center gap-3">
           <button
             className="btn-primary"
-            disabled={!file || stage === "uploading" || stage === "validating"}
+            disabled={
+  !file ||
+  (importType === "INVENTORY" && !approvalReason.trim()) ||
+  stage === "uploading" ||
+  stage === "validating"
+}
             onClick={handleUpload}
           >
             {stage === "uploading" || stage === "validating" ? "Validating..." : "Upload & Validate"}

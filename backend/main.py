@@ -4,11 +4,19 @@ from sqlalchemy import text
 
 from app.database import Base, engine, SessionLocal
 from app.config import settings
-from app.routers import auth, categories, products, dashboard, sales, notifications, inventory, analytics, customers, forecasting, inventory_forecast, imports as data_imports, audit_logs, reports, report_schedules, data_quality
+from app.routers import auth, categories, products, dashboard, sales, notifications, inventory, analytics, customers, forecasting, inventory_forecast, imports as data_imports, audit_logs, reports, report_schedules, data_quality, workflow
+
 from app.models.data_quality import (
     DataQualityIssue,
     ReconciliationRun,
     DataQualityIssueEvent,
+)
+
+# Task 18: Workflow & Approval Management
+from app.models.workflow import (
+    WorkflowRequest,
+    WorkflowApprovalHistory,
+    WorkflowConfig,
 )
 # Creates tables that don't exist yet (including `sales`, `sale_items`,
 # `notifications` from Task 3, and `customers`, `customer_purchase_summary`,
@@ -243,11 +251,22 @@ with engine.connect() as conn:
     "IMPORT_COMPLETED",
     "IMPORT_FAILED",
     "SYSTEM_ALERT",
-     ]:
-        try:
-            conn.execute(text(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{new_value}'"))
-        except Exception:
-            pass
+
+    # Task 18: Workflow & Approval Management
+    "WORKFLOW_REQUEST_SUBMITTED",
+    "WORKFLOW_REQUEST_APPROVED",
+    "WORKFLOW_REQUEST_REJECTED",
+    "WORKFLOW_REQUEST_CANCELLED", 
+    ]:
+     try:
+        conn.execute(
+            text(
+                f"ALTER TYPE notificationtype "
+                f"ADD VALUE IF NOT EXISTS '{new_value}'"
+            )
+        )
+     except Exception:
+        pass
     conn.commit()
     conn.execute(text(
         "CREATE INDEX IF NOT EXISTS ix_notifications_user_created ON notifications (user_id, created_at)"
@@ -315,6 +334,7 @@ app.include_router(audit_logs.router)
 app.include_router(reports.router)
 app.include_router(report_schedules.router)
 app.include_router(data_quality.router)
+app.include_router(workflow.router)
 
 
 # ---------------------------------------------------------------------

@@ -657,6 +657,39 @@ def update_customer(
 ):
     customer = _get_customer_or_404(db, company_id, customer_id)
 
+    profile_fields = [
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "date_of_birth",
+        "gender",
+        "address",
+        "city",
+        "state",
+        "country",
+        "postal_code",
+        "customer_type",
+        "preferred_channel",
+    ]
+
+    requested_changes = {
+        field: getattr(payload, field)
+        for field in profile_fields
+        if getattr(payload, field) is not None
+        and getattr(customer, field) != getattr(payload, field)
+    }
+
+    if requested_changes:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct customer profile changes are disabled. "
+                "Please create and submit a Customer Information Change "
+                "workflow request for approval."
+            ),
+        )
+
     new_email = payload.email if payload.email is not None else customer.email
     new_phone = payload.phone if payload.phone is not None else customer.phone
     if new_email != customer.email or new_phone != customer.phone:

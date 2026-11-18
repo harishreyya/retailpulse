@@ -13,14 +13,21 @@ import type {
 } from "../types";
 
 // 1. Upload CSV file
+
+// 1. Upload CSV file
 export const uploadImport = async (
   importType: ImportType,
-  file: File
+  file: File,
+  approvalReason?: string
 ) => {
   const formData = new FormData();
 
   formData.append("import_type", importType);
   formData.append("file", file);
+
+  if (importType === "INVENTORY") {
+    formData.append("approval_reason", approvalReason?.trim() ?? "");
+  }
 
   const { data } = await apiClient.post<ImportUploadResponse>(
     "/import/upload",

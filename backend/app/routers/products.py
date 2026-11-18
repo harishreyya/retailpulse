@@ -199,6 +199,32 @@ def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     update_data = payload.model_dump(exclude_unset=True)
+    if update_data.get("status") == ProductStatus.INACTIVE:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct product deactivation is disabled. "
+                "Please create and submit a Product Deactivation "
+                "workflow request for approval."
+            ),
+        )
+
+    
+    price_fields = ("unit_price", "cost_price")
+    price_change_requested = any(
+        field in update_data and update_data[field] != getattr(product, field)
+        for field in price_fields
+    )
+
+    if price_change_requested:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct product price changes are disabled. "
+                "Please create and submit a Product Price Change "
+                "workflow request for approval."
+            ),
+        )
 
     # Cross-field validation against the merged (existing + incoming) state,
     # since PATCH-style partial updates may only send one of the two prices.
@@ -272,6 +298,16 @@ def toggle_product_status(
     ).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    if new_status == ProductStatus.INACTIVE:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Direct product deactivation is disabled. "
+                "Please create and submit a Product Deactivation "
+                "workflow request for approval."
+            ),
+        )
 
     previous_status = product.status
     product.status = new_status
